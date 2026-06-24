@@ -11,6 +11,7 @@ The skills are plain markdown files that work with any agent that can read docum
 | `anyways-mcp` | Add and authenticate the ANYWAYS MCP server in your agent |
 | `anyways-projects` | Project / scenario / network data model and common workflows |
 | `anyways-datasets` | The three dataset configurations (manual / counters / locations) and when to use each |
+| `anyways-traffic-counts` | Multi-provider traffic-counter discovery, AADT/peaks, hourly counts, export bundles |
 
 ### anyways-mcp
 
@@ -27,6 +28,10 @@ Use when creating or editing datasets in a project. Covers the three dataset typ
 - **manual** — you draw origin/destination trips on the map.
 - **counters** — counter stations with origin/destination counts at fixed points.
 - **locations** — a single Location of Interest with random surrounding points and trips towards or away from it.
+
+### anyways-traffic-counts
+
+Use when working with real-world traffic-counter data from one of the integrated providers (AWV, NDW, BASt, UK National Highways, TII, Trafikverket, Vejdirektoratet). Covers counter discovery by bbox, fetching aggregated AADT / AM-PM peaks, pulling raw hourly counts, and the multi-phase export pipeline a Python script would drive against the MCP server.
 
 ## Installation
 

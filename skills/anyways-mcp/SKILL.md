@@ -25,7 +25,7 @@ Identity:    https://www.anyways.eu/account/
 - User gets a 401 / 403 from an ANYWAYS MCP tool.
 - User asks how the ANYWAYS auth flow works or how to switch accounts.
 
-For *what to do* with the MCP once it is connected, use the `anyways-projects` and `anyways-datasets` skills.
+For *what to do* with the MCP once it is connected, use the `anyways-projects`, `anyways-datasets`, and `anyways-traffic-counts` skills.
 
 ## Prerequisites
 
@@ -69,14 +69,15 @@ Tokens are stored and refreshed by the MCP client, not by the server. To switch 
 
 ## What tools become available
 
-Once connected, the client sees ~25 tools across these groups:
+Once connected, the client sees ~30 tools across these groups:
 
 - **Organizations / users** — `list_organizations`, `search_organizations`, `get_organization`, `list_organization_members`, `search_users`.
 - **Projects** — `list_projects`, `get_project`, `create_project`, `copy_project`, `get_snapshot_commit`.
 - **Datasets** — `create_dataset`, `get_dataset`, `update_dataset`, `delete_dataset`, `download_dataset`, `link_dataset_to_scenario`, plus type-specific creators (`create_locations_dataset`, `create_counter_dataset`), `add_dataset_locations` / `delete_dataset_locations`, `add_dataset_trips`, `add_counter_dataset_locations`, `generate_counter_segments`.
 - **Routing utilities** — `list_profiles`, `snap_to_road`.
+- **Traffic counts** — `list_traffic_count_providers`, `find_traffic_counters`, `get_traffic_counter`, `get_traffic_counter_aggregated`, `get_traffic_counter_hourly`. See the `anyways-traffic-counts` skill.
 
-See the `anyways-projects` and `anyways-datasets` skills for how to use these together.
+See the `anyways-projects`, `anyways-datasets`, and `anyways-traffic-counts` skills for how to use these together.
 
 ## Troubleshooting
 
