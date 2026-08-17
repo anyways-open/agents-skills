@@ -1,7 +1,7 @@
 {
   "name": "anyways",
   "description": "Skills for working with the ANYWAYS platform via the ANYWAYS MCP server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "ANYWAYS BV",
     "url": "https://www.anyways.eu"
