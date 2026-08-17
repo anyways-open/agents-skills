@@ -4,7 +4,8 @@ description: >-
   Use when the user wants to add or troubleshoot the ANYWAYS MCP server in
   Claude Code, Claude Desktop, Cursor, Gemini CLI, or any other MCP-aware
   client. Also use when they mention "ANYWAYS MCP", api.anyways.eu/mcp,
-  ANYWAYS sign-in, or the OAuth flow against www.anyways.eu/account.
+  ANYWAYS sign-in, or the OAuth flow against www.anyways.eu/account, or hit
+  "does not support dynamic client registration" connecting to ANYWAYS.
 ---
 
 # ANYWAYS MCP — Setup and Authentication
@@ -14,13 +15,20 @@ The ANYWAYS MCP server exposes the ANYWAYS platform (organizations, projects, sc
 ```
 Server URL:  https://api.anyways.eu/mcp/
 Transport:   HTTP (Streamable HTTP)
-Auth:        OAuth 2.1, handled automatically by the MCP client
+Auth:        OAuth 2.1 + PKCE, pre-registered public client
 Identity:    https://www.anyways.eu/account/
+Client ID:   anyways-mcp
+Redirect:    http://localhost:7331/callback
 ```
+
+> The ANYWAYS identity server does **not** support dynamic client registration (RFC 7591).
+> Every client must be configured with the `anyways-mcp` client ID and callback port 7331.
+> See [Adding the server](#adding-the-server) — a client left to self-register will fail.
 
 ## When to use this skill
 
 - User wants to add the ANYWAYS MCP server to their agent.
+- Connecting fails with a dynamic client registration error.
 - User signed in but no tools appear.
 - User gets a 401 / 403 from an ANYWAYS MCP tool.
 - User asks how the ANYWAYS auth flow works or how to switch accounts.
@@ -41,29 +49,44 @@ The connection details are always the same; only the UI differs per client.
 | Name | `anyways` (or any label) |
 | Type / Transport | HTTP (Streamable HTTP) |
 | URL | `https://api.anyways.eu/mcp/` |
+| OAuth client ID | `anyways-mcp` |
+| Client type | Public — PKCE `S256`, **no client secret** |
+| Redirect URI | `http://localhost:7331/callback` |
+| Scopes | `openid impact offline_access` |
+
+The redirect URI is the only one registered for this client. A different callback port is rejected by the identity server with an error page rather than a useful message, so the port is not optional.
 
 ### Claude Code (CLI)
 
 ```bash
-claude mcp add --transport http anyways https://api.anyways.eu/mcp/
+claude mcp add --transport http anyways https://api.anyways.eu/mcp/ \
+  --client-id anyways-mcp \
+  --callback-port 7331 \
+  -s user
 ```
 
 Then in a session run `/mcp`. On first use, Claude Code opens a browser to the ANYWAYS sign-in page. After authorising, the tools appear in that session.
+
+Both flags are required. Without `--client-id`, Claude Code tries to self-register and fails (see [Troubleshooting](#troubleshooting)); without `--callback-port` it picks its own port, which is not registered. Do not pass `--client-secret` — this is a public client.
 
 ### Claude Desktop
 
 `Settings → Connectors → Add custom connector`. Set Name = `anyways`, URL = `https://api.anyways.eu/mcp/`. Restart Claude Desktop, then sign in when prompted.
 
+If the connector fails with a registration error, check whether the custom-connector dialog offers an OAuth client ID field and set it to `anyways-mcp`. If it does not, use Claude Code or another client that allows a pre-registered client.
+
 ### Cursor / Gemini CLI / other MCP clients
 
-Add a remote MCP entry pointing at `https://api.anyways.eu/mcp/`. The client runs the OAuth flow on first connection.
+Add a remote MCP entry pointing at `https://api.anyways.eu/mcp/`, and set the OAuth client ID, redirect URI, and scopes from the table above. Clients that only support dynamic registration cannot connect.
 
 ## How authentication works
 
 1. The client connects to `https://api.anyways.eu/mcp/`.
 2. The server returns a 401 with an OAuth protected-resource metadata document ([RFC 9728](https://datatracker.ietf.org/doc/rfc9728/)) pointing at the ANYWAYS identity provider.
-3. The client opens a browser to `https://www.anyways.eu/account/` for the user to sign in and consent.
+3. The client opens a browser to `https://www.anyways.eu/account/` for the user to sign in and consent, using the pre-configured `anyways-mcp` client ID and PKCE.
 4. The resulting access token is sent on every subsequent call. The MCP server forwards it as-is to the underlying ANYWAYS APIs, so the user's existing organization and project permissions apply.
+
+Step 3 is where most setup problems land. The identity server is Duende IdentityServer and its metadata at `https://www.anyways.eu/account/.well-known/oauth-authorization-server` advertises no `registration_endpoint`, so a client cannot create its own OAuth registration — it must be told to use `anyways-mcp`. The rest of the chain (401 challenge, protected-resource metadata, AS metadata) resolves normally, which is why the failure looks like a server misconfiguration when it is really a missing client setting.
 
 Tokens are stored and refreshed by the MCP client, not by the server. To switch accounts, disconnect the server in the client and reconnect — the client will run the OAuth flow again.
 
@@ -80,6 +103,20 @@ Once connected, the client sees ~30 tools across these groups:
 See the `anyways-projects`, `anyways-datasets`, and `anyways-traffic-counts` skills for how to use these together.
 
 ## Troubleshooting
+
+**"Incompatible auth server: does not support dynamic client registration".**
+The client was added without an OAuth client ID, so it tried to self-register. This is expected — the ANYWAYS identity server does not offer dynamic registration. Re-add the server with the pre-registered client:
+
+```bash
+claude mcp remove anyways -s user
+claude mcp add --transport http anyways https://api.anyways.eu/mcp/ \
+  --client-id anyways-mcp --callback-port 7331 -s user
+```
+
+Nothing needs to be changed or registered on the ANYWAYS side.
+
+**Sign-in page replaced by an ANYWAYS error page (`/account/home/error?errorId=...`).**
+The callback port does not match the registered redirect URI. It must be exactly `http://localhost:7331/callback` — re-add the server with `--callback-port 7331`. The error page does not say which parameter was rejected, so a mistyped client ID looks identical; check both.
 
 **Client shows the server connected but no tools.**
 The OAuth sign-in did not complete. Disconnect the server in the client and reconnect; complete the browser flow.
