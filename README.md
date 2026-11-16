@@ -10,8 +10,8 @@ The skills are plain markdown files that work with any agent that can read docum
 |-------|---------|
 | `anyways-mcp` | Add and authenticate the ANYWAYS MCP server in your agent |
 | `anyways-projects` | Project / scenario / network data model and common workflows |
-| `anyways-datasets` | The three dataset configurations (manual / counters / locations) and when to use each |
-| `anyways-traffic-counts` | Multi-provider traffic-counter discovery, AADT/peaks, hourly counts, export bundles |
+| `anyways-datasets` | The dataset types (modelled routes / counters / locations) and when to use each |
+| `anyways-traffic-counts` | What to do about traffic-counter data, which the MCP server does not expose |
 
 ### anyways-mcp
 
@@ -19,19 +19,19 @@ Use when adding the ANYWAYS MCP server to Claude Code, Claude Desktop, Cursor, o
 
 ### anyways-projects
 
-Use when working with ANYWAYS projects — creating a project with a geographic area, listing or inspecting projects, copying a project, or understanding how scenarios and networks relate to a project.
+Use when working with ANYWAYS projects — creating a project with a geographic area, listing or inspecting projects, copying a network, or understanding how scenarios and networks relate to a project.
 
 ### anyways-datasets
 
-Use when creating or editing datasets in a project. Covers the three dataset types:
+Use when creating datasets in a project. Covers the three dataset types:
 
-- **manual** — you draw origin/destination trips on the map.
-- **counters** — counter stations with origin/destination counts at fixed points.
+- **modelled routes** — the agent-based model's own routes over an area, folded into origin/destination trips. The usual starting point.
+- **counters** — observed traffic counts, acting on trips copied from another dataset, either calibrating its level or fitting volumes onto the routes that cross each counter.
 - **locations** — a single Location of Interest with random surrounding points and trips towards or away from it.
 
 ### anyways-traffic-counts
 
-Use when working with real-world traffic-counter data from one of the integrated providers (AWV, NDW, BASt, UK National Highways, TII, Trafikverket, Vejdirektoratet). Covers counter discovery by bbox, fetching aggregated AADT / AM-PM peaks, pulling raw hourly counts, and the multi-phase export pipeline a Python script would drive against the MCP server.
+Use when someone asks for traffic-counter data from one of the integrated providers (AWV, NDW, BASt, UK National Highways, TII, Trafikverket, Vejdirektoratet). Counter discovery is **not** exposed by the MCP server; this skill says so, explains what a count means when it reaches a model, and points at the paths that do work — counts you already have, and the app's own counter picker.
 
 ## Installation
 
@@ -42,7 +42,7 @@ See [install.md](install.md) for setup instructions covering Claude Code, Gemini
 - An ANYWAYS account with access to the organizations and projects you want to work with — sign up at [www.anyways.eu](https://www.anyways.eu).
 - An MCP client that supports remote HTTP servers with OAuth (Claude Code, Claude Desktop, Cursor, Gemini CLI, etc.).
 
-The MCP server runs at `https://api.anyways.eu/mcp/` and uses OAuth against `https://www.anyways.eu/account/`. Your MCP client handles the sign-in flow automatically.
+The MCP server runs at `https://api.anyways.eu/impact/mcp` and uses OAuth against `https://www.anyways.eu/account`. The sign-in flow is handled by your MCP client — but it must be configured with the `anyways-mcp` client ID and callback port 7331, because the ANYWAYS identity server does not support dynamic client registration. See the `anyways-mcp` skill.
 
 ---
 
