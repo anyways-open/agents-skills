@@ -1,152 +1,143 @@
 ---
 name: anyways-datasets
 description: >-
-  Use when the user wants to create, edit, link, or download ANYWAYS datasets,
-  or asks about manual trips, counter datasets, or Location of Interest (LOI)
-  datasets. Also use when they mention origin/destination counts, donut rings
-  around a site, drawing trips on the map, routing profiles, or GeoJSON
-  export. Requires the ANYWAYS MCP server (see the anyways-mcp skill) and
-  an existing project (see the anyways-projects skill).
+  Use when the user wants to create, inspect or link ANYWAYS datasets, or asks
+  about modelled routes from the agent-based model, traffic-count calibration,
+  or Location of Interest (LOI) datasets. Also use when they mention
+  origin/destination trips, donut rings around a site, fitting or calibrating
+  against counts, AADT into a model, or routing profiles. Requires the ANYWAYS
+  MCP server (see the anyways-mcp skill) and a project (see anyways-projects).
 ---
 
 # ANYWAYS Datasets
 
-A **dataset** is a collection of locations and trips inside a project. It has one of three configurations and is linked to one or more **scenarios** so it can feed them with traffic.
+A **dataset** is the demand put over a network: trips between origins and destinations, each carrying a count. A dataset belongs to a project and takes effect when it is **linked to a scenario**.
 
 ```
 Project
-  ├── Dataset (configuration: manual | counters | locations)
-  │      ├── locations[]   ── points on the map
-  │      └── trips[]       ── origin → destination, with profile + count
-  └── Scenario ── link_dataset_to_scenario ── Dataset
+  ├── Dataset  ── trips (origin → destination, profile, count)
+  └── Scenario ── add_dataset_to_scenario ── Dataset
 ```
+
+Three kinds can be made, and they are not alternatives so much as a sequence: the model gives you realistic trips, counts put them on the right level.
 
 ## When to use this skill
 
-- Picking the right dataset type for a study question.
-- Creating a dataset and linking it to a scenario.
-- Adding/removing locations or trips on an existing dataset.
-- Exporting a dataset as GeoJSON.
+- Choosing how to represent demand for a study question.
+- Building demand from the agent-based model.
+- Calibrating or fitting against observed traffic counts.
+- Modelling traffic to and from a single site.
+- Linking a dataset to a scenario, or seeing what a scenario holds.
 
-For the surrounding project/scenario model, use the `anyways-projects` skill. To add the MCP server in the first place, see `anyways-mcp`.
+For projects, networks and scenarios, use `anyways-projects`.
 
 ## Choosing a dataset type
 
-```mermaid
-graph TD
-    Q{What does the user want to model?}
-    Q -- "Traffic to or from a single site" --> L[locations dataset]
-    Q -- "Known counts at counter stations" --> C[counters dataset]
-    Q -- "Custom origin/destination trips drawn by hand" --> M[manual dataset]
-```
-
-| Type | What it represents | Typical use |
+| Tool | What it represents | Use when |
 | --- | --- | --- |
-| `locations` | One Location of Interest + auto-generated surrounding points | "Where does traffic to/from this site come from?" |
-| `counters` | Counter stations with origin/destination counts | Calibrating against measured traffic counts |
-| `manual` | Hand-drawn origin/destination trips with chosen profile and count | Custom what-if studies, small bespoke flows |
+| `create_abm_dataset` | The agent-based model's own routes over an area, folded into OD trips | You want realistic demand without placing anything by hand. **The usual starting point.** |
+| `create_counters_dataset` | Observed counts acting on trips copied from another dataset | You have measured counts and want the model on the right level |
+| `create_locations_dataset` | Trips between one site and random points in rings around it | "Where does traffic to and from this site come from?" |
 
-All three use the same underlying locations + trips data model. The `configuration` field on the dataset tells the app which UI / map mode to use.
+There is no hand-drawn dataset type, no dataset deletion, and no GeoJSON export.
 
-## Key tools
-
-| Tool | Use |
-| --- | --- |
-| `create_dataset` | Create an empty manual dataset |
-| `create_counter_dataset` | Create a counter dataset |
-| `create_locations_dataset` | Create an LOI dataset and auto-generate random surrounding points and trips |
-| `add_dataset_locations` / `delete_dataset_locations` | Manage points |
-| `add_dataset_trips` | Add origin-destination trips |
-| `add_counter_dataset_locations` | Add counter origins/destinations with counts |
-| `generate_counter_segments` | Derive counter entry/exit segments from polygon-road intersections |
-| `link_dataset_to_scenario` | Attach the dataset to a scenario (required to take effect) |
-| `update_dataset` / `delete_dataset` | Rename, edit metadata, or delete |
-| `get_dataset` | Read full dataset detail |
-| `download_dataset` | Export as GeoJSON |
-| `list_profiles` | List available routing profiles (e.g. `car.fast`) |
-
-## Locations dataset (LOI)
-
-Places a single Location of Interest and auto-generates random surrounding points inside concentric **donut rings** around it. Trips connect the LOI to each generated point.
+## Modelled routes — `create_abm_dataset`
 
 ```
-create_locations_dataset(
-  name="Routes to Office Center",
-  projectId="<project-guid>",
-  longitude=4.989, latitude=51.165,
-  isOrigin=false,            # false = traffic TOWARDS LOI; true = AWAY from LOI
-  profile="car.fast",        # see list_profiles for options
-  donutsJson='[{"size":300,"count":0},{"size":1200,"count":100}]'
-)
+create_abm_dataset(projectId, name?, description?, fromHour?, toHour?, area?)
+get_abm_dataset(datasetId)
 ```
 
-**Donut rings.** Sizes are cumulative widths in metres. The default `[{size:300,count:0},{size:1200,count:100}]` means:
+Generates immediately: the dataset has trips when the call returns. `area` defaults to the project's own polygon — pass one explicitly when the catchment feeding the study is wider than the project area. `fromHour`/`toHour` filter to an hourly window.
 
-- 0–300 m around the LOI: dead zone, 0 points.
-- 300–1500 m around the LOI: 100 random points.
+Only car routes exist in the model today.
 
-A wider study area = larger outer ring or additional rings further out.
+These are what the app calls **modelled routes**, and they are the usual source for a counters dataset.
 
-**Direction.** `isOrigin=false` makes the LOI the trip *destination* (traffic flowing in). `isOrigin=true` makes it the *origin* (traffic flowing out). For a "where do our visitors come from" question, use `false`.
-
-## Counters dataset
-
-Represents counter stations with origin and destination locations and their measured counts.
+## Traffic counts — `create_counters_dataset`
 
 ```
-create_counter_dataset(name="...", projectId="<project-guid>")
-add_counter_dataset_locations(datasetId="<ds-guid>", ...)  # add counter points
-generate_counter_segments(...)                              # derive entry/exit segments
+create_counters_dataset(projectId, networkId, sourceDatasetId?, name?,
+                        description?, method?, profiles?, counters?)
+add_counters(datasetId, counters)
+get_counters_dataset(datasetId)
 ```
 
-Use counter datasets to calibrate against measured field data rather than synthetic donut points.
+A counters dataset needs two things: **trips** to act on, and **counters** — counted volumes on particular road segments.
 
-## Manual dataset
+**The trips always come from another dataset**, named by `sourceDatasetId`. Origins and destinations cannot be placed directly on a counters dataset through the MCP server, so without a source it has nothing to fit the counts onto and finishes holding nothing. Use `create_abm_dataset` (usual) or `create_locations_dataset`, and wait for that source to be finished before copying from it.
 
-A blank canvas. Create the dataset, then add locations and trips programmatically — or edit them in the ANYWAYS app where the user can draw origin/destination pairs by clicking on the map.
+### The two methods
+
+| `method` | What the counts do | Use when |
+| --- | --- | --- |
+| `calibrate` | The trips already describe the *shape* of the traffic; the counts set the *level*. Every trip is scaled by one factor fitted to all counters at once, including trips no counter can see. | The trips come from the model, or an earlier dataset of your own |
+| `fit` | The counters are the evidence of how much traffic exists. Each counter's volume is fitted onto the trips crossing it, and a trip no counter sees carries nothing. | The counts are all you have |
+
+Defaults to `calibrate` with a source and `fit` without, matching the app, where these are called *"calibrate the source"* and *"fit counters to the routes"*. Either can be switched afterwards and the result is recomputed.
+
+### Which network
+
+`networkId` is required. Counts are observations of the real world, so use the network matching the roads **as they were when the counts were taken** — normally `Network 0`, the existing state. A network carrying planned changes would fit the counts to roads that were not there.
+
+### Placing a counter
+
+A counter is a short line **in the direction traffic travels**: reversing start and end measures the other carriageway. Each entry is `originLongitude`, `originLatitude`, `destinationLongitude`, `destinationLatitude`, `count`.
+
+Do not guess the geometry. Use `find_counter_segment(projectId, networkId, latitude, longitude)`: given the spot where traffic was counted, it returns the snapped, driving-side segment for each direction the profile can actually travel — so a one-way street offers one direction, not two. Take the direction that matches the count and pass it as a counter.
+
+To explore the network first — "is there a road called N104 near here", "what is around this point" — use `find_roads`, which returns matching roads as junction-to-junction stretches with geometry.
+
+### It is not finished when it returns
+
+`create_counters_dataset` returns as soon as the specification is written. A worker then copies the trips, routes them and fits the counters, which takes seconds to minutes. Poll `get_counters_dataset(datasetId)` until it reports done, and read the per-counter results: each says what the counter measured and the ratio of fitted traffic to it, where **1 is exact**.
+
+## Trips around a site — `create_locations_dataset`
 
 ```
-create_dataset(name="...", projectId="<project-guid>", configuration="manual")
-add_dataset_locations(datasetId="<ds-guid>", locations=[...])
-add_dataset_trips(datasetId="<ds-guid>", trips=[...])
+create_locations_dataset(projectId, latitude, longitude, rings,
+                         origin?, profile?, name?, description?)
 ```
 
-Each trip has an origin, destination, routing `profile`, and `count`.
+Places one Location of Interest and generates random points in concentric bands around it, one trip per point.
+
+`rings` is a list of `{fromMetres, toMetres, trips}` — explicit distances, so bands may have gaps. `fromMetres: 0` starts at the site itself. Each trip carries a count of 1.
+
+```
+rings: [{fromMetres: 0, toMetres: 1000, trips: 50},
+        {fromMetres: 1000, toMetres: 5000, trips: 30}]
+```
+
+`origin: true` (the default) makes the site the origin of every trip — traffic leaving it. `false` makes it the destination.
 
 ## Linking to a scenario
 
-A dataset belongs to a project but does not contribute to any analysis until it is linked to a scenario:
+A dataset does nothing until it is on a scenario.
 
 ```
-link_dataset_to_scenario(datasetId="<ds-guid>", scenarioId="<scenario-guid>")
+add_dataset_to_scenario(scenarioId, datasetId)
+remove_dataset_from_scenario(scenarioId, datasetId)
+get_scenario(scenarioId)
 ```
 
-Get the scenario IDs from `get_project` (see the `anyways-projects` skill).
+Both are idempotent and both refuse to link a dataset from a different project.
 
-## Routing profiles
+## Typical workflow: counts on modelled routes
 
-`list_profiles` returns the available routing profiles grouped by vehicle type. The default for locations/manual datasets is `car.fast`. Other typical profiles cover bicycles and pedestrians. Pick the profile that matches the trip mode you are studying.
+This is the flow to reach for when someone has traffic counts and wants a calibrated model.
 
-## Exporting
-
-```
-download_dataset(datasetId="<ds-guid>")
-→ GeoJSON FeatureCollection (points = locations, lines = trips)
-```
-
-Useful for offline analysis, mapping in QGIS, or sharing with stakeholders.
-
-## Typical workflow: LOI study
-
-1. Project ready (use the `anyways-projects` skill).
-2. `create_locations_dataset` at the site's lat/lon with `isOrigin=false`.
-3. `link_dataset_to_scenario` to the baseline scenario from `get_project`.
-4. Open in the app: `https://www.anyways.eu/app/scenario/<scenario-id>` to review and refine.
+1. `get_project(projectId)` — note `Network 0` and the scenario to put this on.
+2. `create_abm_dataset(projectId, ...)` — modelled routes. Trips exist on return.
+3. `find_counter_segment(projectId, networkId, lat, lon)` for each counted location, taking the direction that matches the count.
+4. `create_counters_dataset(projectId, networkId: <Network 0>, sourceDatasetId: <the ABM dataset>, counters: [...])` — `calibrate` by default.
+5. Poll `get_counters_dataset` until done; check each counter's ratio against its count.
+6. `add_dataset_to_scenario(scenarioId, datasetId)`.
 
 ## Notes and gotchas
 
-- **`longitude` is first** in MCP calls and GeoJSON, but `latitude` is first in human conversation. Double-check the order, especially for places near the equator or prime meridian where the swap is not visually obvious.
-- **Donut sizes are cumulative widths**, not absolute radii. `[{size:300,count:0},{size:1200,count:100}]` produces an outer ring at 1500 m (300 + 1200), not 1200 m.
-- **A dataset only affects a scenario if explicitly linked.** Creating a dataset is not enough — call `link_dataset_to_scenario` afterwards.
-- **`isOrigin`** flips trip direction. Setting it incorrectly will produce results that look right on the map but model the opposite traffic flow.
-- **Profiles must exist.** If `list_profiles` does not list the profile name you intend to use, the dataset will route with whatever default the engine falls back to. Use `list_profiles` first when in doubt.
+- **A counters dataset with no source finishes empty.** Nothing refuses it, so the symptom is a dataset that completes holding nothing.
+- **Counter direction matters.** A counter on the direction traffic cannot travel can never be crossed, so it fits to zero. `find_counter_segment` only offers directions the profile can travel.
+- **Descriptions are one short sentence.** They appear next to the name in the app's lists; the server refuses anything over 200 characters. Put reasoning in your reply to the user, not on the record.
+- **`profiles` defaults to `car.fast`, `car.short`, `car.classifications`** — what the app uses. More profiles means more possible paths between an origin and a destination.
+- **Datasets cannot be deleted** through the MCP server, so do not create them speculatively while exploring.
+- **Nothing reports how much of a dataset informed a calibration.** A factor fitted from a handful of counters is applied to every trip, and the response does not say how thin the evidence was — read the per-counter results and judge.
