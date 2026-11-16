@@ -5,7 +5,8 @@ description: >-
   about modelled routes from the agent-based model, traffic-count calibration,
   or Location of Interest (LOI) datasets. Also use when they mention
   origin/destination trips, donut rings around a site, fitting or calibrating
-  against counts, AADT into a model, or routing profiles. Requires the ANYWAYS
+  against counts, AADT or AM/PM peaks into a model, counts from NDW or another
+  provider, or routing profiles. Requires the ANYWAYS
   MCP server (see the anyways-mcp skill) and a project (see anyways-projects).
 ---
 
@@ -79,6 +80,18 @@ Defaults to `calibrate` with a source and `fit` without, matching the app, where
 ### Which network
 
 `networkId` is required. Counts are observations of the real world, so use the network matching the roads **as they were when the counts were taken** — normally `Network 0`, the existing state. A network carrying planned changes would fit the counts to roads that were not there.
+
+### Where the counts come from
+
+The MCP server has **no counter discovery**: no tool lists providers or finds counters near a place, and none reads AADT, peaks or hourly counts. The platform holds that data and the app can place a counter from it, but it is not reachable from here. Say so rather than hunting for a tool.
+
+So either the user already has the counts — a report, a campaign, a spreadsheet, or read off the app — or they find them in the app first: open a counters dataset, click **Configure counters**, and counters available for the area appear on the map (NDW in the Netherlands, plus the organization's own uploaded counts), offering **AADT** or **AM / PM**. See https://docs.anyways.eu/guides/simulate-traffic/using-traffic-counts/
+
+What the number means matters before it goes in:
+
+- **AADT** is an annual average daily total. Fitting to it gives an average day, not a peak.
+- **AM / PM peak** are hourly volumes. Pair them with an ABM dataset built for the matching hourly window, or the counts and the trips describe different times of day.
+- **Direction is part of the measurement.** A count belongs to one direction of one road, and a station's total is the sum of its per-lane sub-counters.
 
 ### Placing a counter
 

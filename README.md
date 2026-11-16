@@ -11,7 +11,6 @@ The skills are plain markdown files that work with any agent that can read docum
 | `anyways-mcp` | Add and authenticate the ANYWAYS MCP server in your agent |
 | `anyways-projects` | Project / scenario / network data model and common workflows |
 | `anyways-datasets` | The dataset types (modelled routes / counters / locations) and when to use each |
-| `anyways-traffic-counts` | What to do about traffic-counter data, which the MCP server does not expose |
 
 ### anyways-mcp
 
@@ -28,10 +27,6 @@ Use when creating datasets in a project. Covers the three dataset types:
 - **modelled routes** — the agent-based model's own routes over an area, folded into origin/destination trips. The usual starting point.
 - **counters** — observed traffic counts, acting on trips copied from another dataset, either calibrating its level or fitting volumes onto the routes that cross each counter.
 - **locations** — a single Location of Interest with random surrounding points and trips towards or away from it.
-
-### anyways-traffic-counts
-
-Use when someone asks for traffic-counter data from one of the integrated providers (AWV, NDW, BASt, UK National Highways, TII, Trafikverket, Vejdirektoratet). Counter discovery is **not** exposed by the MCP server; this skill says so, explains what a count means when it reaches a model, and points at the paths that do work — counts you already have, and the app's own counter picker.
 
 ## Installation
 

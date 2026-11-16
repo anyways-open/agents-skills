@@ -110,7 +110,7 @@ Tokens are held and refreshed by the client, not the server. To switch accounts,
 | Scenarios | `create_scenario`, `get_scenario`, `add_dataset_to_scenario`, `remove_dataset_from_scenario` |
 | Datasets | `create_abm_dataset`, `get_abm_dataset`, `create_locations_dataset`, `create_counters_dataset`, `add_counters`, `get_counters_dataset` |
 
-Organizations come from `whoami`. There are no separate organization tools, no project copying, and no traffic-counter discovery — see `anyways-traffic-counts`.
+Organizations come from `whoami`. There are no separate organization tools, no project copying, no dataset deletion, and no traffic-counter discovery — counts have to come from the user or from the app, as `anyways-datasets` explains.
 
 ## Troubleshooting
 
